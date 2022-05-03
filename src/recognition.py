@@ -58,6 +58,35 @@ def unpack_array_of_tuples(array: np.ndarray):
 
     return tuple(unpacked_values)
 
+class UnidentifiedFace:
+    faces = []
+    def __init__(self, img, encodings):
+        self.encodings = encodings
+        self.image = img
+        self.name = 'Unidentified-' + str(len(UnidentifiedFace.faces))
+
+        if not self.__is_in_face():
+            UnidentifiedFace.faces.append(self)     
+
+    def __is_in_face(self):
+        if len(UnidentifiedFace.faces) == 0:
+            return False
+        
+        matches = fr.compare_faces(UnidentifiedFace.get_encodings(), self.encodings)
+        distance = fr.face_distance(UnidentifiedFace.get_encodings(), self.encodings)
+
+        min_index = np.argmin(distance)
+        if matches[min_index]:
+            return True
+        return False
+
+    @staticmethod
+    def get_encodings():
+        return np.array(list(map(lambda face: face.encodings[0], UnidentifiedFace.faces)))
+
+    @staticmethod
+    def flush():
+        UnidentifiedFace.faces = []
 
 if __name__ == '__main__':
     face_detector_haarcascade = Path('../Data/haarcascade_frontalface_default.xml')
@@ -66,6 +95,7 @@ if __name__ == '__main__':
     webcam = cv2.VideoCapture(0)
 
     identified_faces = set()
+    UnidentifiedFace.flush() # clear the data
 
     encodings = generate_encodings()
     encodings, ids = unpack_array_of_tuples(encodings)
@@ -96,8 +126,8 @@ if __name__ == '__main__':
                     id = ids[idx]
                     identified_faces.add(id)
                     
-                # else:
-                #     cmde.UnidentifiedFace(crop_img, encoded_face)  # Add the unidentified face
+                else:
+                    UnidentifiedFace(crop_img, encoded_face)  # Add the unidentified face
         
         cv2.imshow("Webcam", frame)
         key = cv2.waitKey(1) # to force quit
@@ -107,3 +137,4 @@ if __name__ == '__main__':
     webcam.release()
     cv2.destroyAllWindows()
     print(identified_faces)
+    print(UnidentifiedFace.faces)
